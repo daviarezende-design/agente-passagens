@@ -1,0 +1,39 @@
+name: Busca de passagens
+
+on:
+  schedule:
+    - cron: "0 12,0 * * *"   # 09h e 21h de Brasília
+  workflow_dispatch:          # permite rodar manualmente
+
+permissions:
+  contents: write             # permite salvar o histórico de preços
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar bibliotecas
+        run: pip install requests schedule python-dotenv
+
+      - name: Buscar passagens e enviar alerta
+        run: python agente.py --agora
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Salvar histórico de preços
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add historico_precos.json
+          git commit -m "Atualiza histórico de preços" || echo "Sem mudanças"
+          git push
